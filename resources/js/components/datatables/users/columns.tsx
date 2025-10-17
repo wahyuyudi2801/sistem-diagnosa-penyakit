@@ -14,9 +14,12 @@ import { useState } from 'react';
 export type User = {
     id: string;
     role_id: number;
-    role: string;
     name: string;
     email: string;
+    role: {
+        id: number;
+        name: string;
+    };
 };
 
 export const columns: ColumnDef<User>[] = [
@@ -31,6 +34,7 @@ export const columns: ColumnDef<User>[] = [
     {
         accessorKey: 'role',
         header: ({ column }) => <ButtonGhost column={column} label="Role" />,
+        cell: ({ row }) => row.original.role.name,
     },
     {
         accessorKey: 'actions',

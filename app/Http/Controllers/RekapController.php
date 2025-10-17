@@ -2,75 +2,45 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RekapRequest;
 use App\Models\Rekap;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use RekapService;
 
 class RekapController extends Controller
 {
+    private RekapService $rekapService;
+
+    public function __construct(RekapService $rekapService)
+    {
+        $this->rekapService = $rekapService;
+    }
+
     public function index()
     {
+        $userId = Auth::user()->id;
+        $roleId = Auth::user()->role_id;
 
-
-        if (Auth::user()->role_id == 2) {
-            $rekaps = Rekap::with([
-                'rekap_gejalas.gejala',
-                'rekap_penyakits' => function ($query) {
-                    $query->orderBy('persentase', 'desc')->with('penyakit');
-                }
-            ])->where('user_id', Auth::user()->id);
+        if ($roleId == 2) {
+            $rekaps = $this->rekapService->getByUserId($userId, $userId);
         } else {
-            $rekaps = Rekap::with([
-                'rekap_gejalas.gejala',
-                'rekap_penyakits' => function ($query) {
-                    $query->orderBy('persentase', 'desc')->with('penyakit');
-                }
-            ])->select('rekaps.*', 'users.name', 'users.email', 'roles.name as role')
-            ->join('users', 'users.id', '=', 'rekaps.user_id')
-            ->join('roles', 'roles.id', '=', 'users.role_id');
+            $fields = ['rekaps.*', 'users.name', 'users.email', 'roles.name as role'];
+            $rekaps = $this->rekapService->getAllJoinUserAndRole($fields);
         }
-
-        $rekaps = $rekaps->orderBy('created_at', 'desc')
-            ->get();
 
         return Inertia::render('rekap/index', [
             'rekaps' => $rekaps,
-            'role_id' => Auth::user()->role_id,
+            'role_id' => $roleId,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(RekapRequest $request)
     {
         try {
-            $request->validate([
-                'rekap_gejalas' => 'required|array',
-                'rekap_gejalas.*' => 'numeric',
-                'rekap_penyakits' => 'required|array',
-                'rekap_penyakits.*.penyakit_id' => 'numeric',
-                'rekap_penyakits.*.persentase' => 'numeric',
-            ]);
+            $userId = Auth::user()->id;
 
-            $user_id = Auth::user()->id;
-            $rekap_gejalas = [];
-            $rekap_penyakits = [];
-
-            foreach ($request->rekap_gejalas as $value) {
-                $rekap_gejalas[] = [
-                    'gejala_id' => $value,
-                ];
-            }
-
-            foreach ($request->rekap_penyakits as $value) {
-                $rekap_penyakits[] = [
-                    'penyakit_id' => $value['penyakit_id'],
-                    'persentase' => $value['persentase'],
-                ];
-            }
-
-            $rekap = Rekap::create(['user_id' => $user_id]);
-            $rekap->rekap_gejalas()->createMany($rekap_gejalas);
-            $rekap->rekap_penyakits()->createMany($rekap_penyakits);
+            $this->rekapService->create($request->validated(), $userId);
 
             return redirect()->back();
         } catch (\Exception $e) {

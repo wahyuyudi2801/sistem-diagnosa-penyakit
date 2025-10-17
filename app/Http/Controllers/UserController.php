@@ -2,37 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UserRequest;
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    private UserService $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
+
     public function index()
     {
-        $users = User::select('users.id', 'users.name', 'users.email', 'users.role_id', 'roles.name as role')
-        ->join('roles', 'users.role_id', '=', 'roles.id')
-        ->get();
+        $fields = ['id', 'name', 'email', 'role_id'];
+        $users = $this->userService->getAll($fields);
 
         return Inertia::render('user/index', ['users' => $users]);
     }
 
-    public function store(Request $request)
+    public function store(UserRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed',
-            'role_id' => 'required'
-        ]);
-
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role_id' => $request->role_id
-        ]);
+        $user = $this->userService->create($request->validated());
 
         return back();
     }

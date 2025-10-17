@@ -2,34 +2,37 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PenyakitRequest;
 use App\Models\Penyakit;
-use Illuminate\Http\Request;
+use App\Services\PenyakitService;
 use Inertia\Inertia;
 
 class PenyakitController extends Controller
 {
+    private PenyakitService $penyakitService;
+
+    public function __construct(PenyakitService $penyakitService)
+    {
+        $this->penyakitService = $penyakitService;
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $penyakits = Penyakit::orderBy('id', 'desc')->lazy();
+        $penyakits = $this->penyakitService->getAll();
+
         return Inertia::render('penyakit/index', ['penyakits' => $penyakits]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(PenyakitRequest $request)
     {
-        $request->validate([
-            'nama_penyakit' => 'required|string',
-            'solusi' => 'required|string'
-        ], [
-            'nama_penyakit.required' => 'Penyakit harus diisi.',
-            'solusi.required' => 'Solusi harus diisi.'
-        ]);
-        Penyakit::create($request->only(['nama_penyakit', 'solusi']));
+        $penyakit = $this->penyakitService->create($request->validated());
+
         return back();
     }
 
@@ -49,21 +52,9 @@ class PenyakitController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Penyakit $penyakit)
+    public function update(PenyakitRequest $request, Penyakit $penyakit)
     {
-        $options = [
-            'nama_penyakit' => 'required|string',
-            'solusi' => 'required|string'
-        ];
-
-        $messages = [
-            'nama_penyakit.required' => 'Penyakit harus diisi.',
-            'solusi.required' => 'Solusi harus diisi.'
-        ];
-
-        $request->validate($options, $messages);
-
-        $penyakit->update($request->only(['nama_penyakit', 'solusi']));
+        $penyakit->update($request->validated());
 
         return back();
     }
@@ -71,10 +62,10 @@ class PenyakitController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Penyakit $penyakit)
     {
-        $penyakit = Penyakit::findOrFail($id);
         $penyakit->delete();
+
         return back();
     }
 }

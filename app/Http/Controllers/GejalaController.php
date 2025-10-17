@@ -2,31 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\GejalaRequest;
 use App\Models\Gejala;
+use App\Services\GejalaService;
 use Inertia\Inertia;
 
 class GejalaController extends Controller
 {
+    private GejalaService $gejalaService;
+
+    public function __construct(GejalaService $gejalaService)
+    {
+        $this->gejalaService = $gejalaService;
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $gejalas = Gejala::orderBy('id', 'desc')->lazy();
+        $gejalas = $this->gejalaService->getAll();
+
         return Inertia::render('gejala/index', ['gejalas' => $gejalas]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(GejalaRequest $request)
     {
-        $request->validate([
-            'nama_gejala' => 'required',
-        ]);
 
-        Gejala::create($request->only(['nama_gejala']));
+        $gejala = $this->gejalaService->create($request->validated());
 
         return back();
     }
@@ -47,19 +53,9 @@ class GejalaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Gejala $gejala)
+    public function update(GejalaRequest $request, Gejala $gejala)
     {
-        $options = [
-            'nama_gejala' => 'required|string',
-        ];
-
-        $messages = [
-            'nama_gejala.required' => 'Gejala harus diisi.',
-        ];
-
-        $request->validate($options, $messages);
-
-        $gejala->update($request->only(['nama_gejala']));
+        $gejala->update($request->validated());
 
         return back();
     }
